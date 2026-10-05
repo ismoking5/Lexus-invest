@@ -114,9 +114,18 @@ export const LexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => {
+    // If arriving with a referral invitation link (?ref= or ?invite= or ?code=),
+    // clear active session so the visitor lands directly on Registration with the prefilled referral code!
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('ref') || params.get('invite') || params.get('code')) {
+        localStorage.removeItem(`${STORAGE_KEY}_current_user_id`);
+        return null;
+      }
+    }
     const saved = localStorage.getItem(`${STORAGE_KEY}_current_user_id`);
-    if (saved === 'null' || saved === '') return null;
-    return saved !== null ? saved : 'usr-demo-1';
+    if (saved === 'null' || saved === '' || !saved) return null;
+    return saved;
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
