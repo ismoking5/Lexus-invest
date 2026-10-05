@@ -1,0 +1,6 @@
+{
+  "name": "Lexus Invest",
+  "description": "Plateforme mobile d'investissement Lexus - Rendements quotidiens automatisés sur 180 jours en FCFA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
