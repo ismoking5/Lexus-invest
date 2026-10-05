@@ -14,45 +14,66 @@ import { useLexus } from '../context/LexusContext';
 import { ALLOWED_COUNTRIES, AllowedCountry } from '../types';
 import { LEXUS_IMAGES } from '../assets/images';
 
+const getInitialRefCode = (): string => {
+  if (typeof window === 'undefined') return '';
+  try {
+    // 1. Search params (?ref=... or ?invite=... or ?code=...)
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('ref') || searchParams.get('invite') || searchParams.get('code');
+    if (q && q.trim().length > 0) return q.trim().toUpperCase();
+
+    // 2. Hash params (e.g. #/?ref=...)
+    if (window.location.hash && window.location.hash.includes('?')) {
+      const hashQuery = window.location.hash.split('?')[1];
+      const hp = new URLSearchParams(hashQuery);
+      const hq = hp.get('ref') || hp.get('invite') || hp.get('code');
+      if (hq && hq.trim().length > 0) return hq.trim().toUpperCase();
+    }
+
+    // 3. Regex on full URL
+    const match = window.location.href.match(/[?&#](?:ref|invite|code)=([^&#]+)/i);
+    if (match && match[1]) {
+      return decodeURIComponent(match[1]).trim().toUpperCase();
+    }
+
+    // 4. Saved in storage
+    const saved = localStorage.getItem('lexus_auto_referral_code') || sessionStorage.getItem('lexus_auto_referral_code');
+    if (saved && saved.trim().length > 0) return saved.trim().toUpperCase();
+  } catch (e) {
+    // ignore
+  }
+  return '';
+};
+
 export const AuthView: React.FC = () => {
   const { loginUser, registerUser } = useLexus();
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const detectedRef = getInitialRefCode();
+  const [mode, setMode] = useState<'login' | 'register'>(detectedRef ? 'register' : 'login');
   const [selectedCountryName, setSelectedCountryName] = useState<AllowedCountry>("Côte d'Ivoire");
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [referralCodeInput, setReferralCodeInput] = useState('');
-  const [isAutoReferred, setIsAutoReferred] = useState(false);
+  const [referralCodeInput, setReferralCodeInput] = useState<string>(detectedRef);
+  const [isAutoReferred, setIsAutoReferred] = useState<boolean>(Boolean(detectedRef));
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Auto-detect referral code from URL parameter (?ref=... or ?invite=... or ?code=...)
+  // Persist referral code
   useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const searchParams = new URLSearchParams(window.location.search);
-        const urlRef = searchParams.get('ref') || searchParams.get('invite') || searchParams.get('code');
-        if (urlRef && urlRef.trim().length > 0) {
-          const clean = urlRef.trim().toUpperCase();
-          setReferralCodeInput(clean);
-          setIsAutoReferred(true);
-          setMode('register'); // Automatically open registration tab!
-          localStorage.setItem('lexus_auto_referral_code', clean);
-        } else {
-          // Check saved referral in localStorage
-          const saved = localStorage.getItem('lexus_auto_referral_code');
-          if (saved && saved.trim().length > 0) {
-            setReferralCodeInput(saved.trim().toUpperCase());
-            setIsAutoReferred(true);
-          }
-        }
+    if (detectedRef) {
+      try {
+        localStorage.setItem('lexus_auto_referral_code', detectedRef);
+        sessionStorage.setItem('lexus_auto_referral_code', detectedRef);
+        setReferralCodeInput(detectedRef);
+        setIsAutoReferred(true);
+        setMode('register');
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error('Error detecting referral code:', e);
     }
-  }, []);
+  }, [detectedRef]);
 
   const currentCountry = ALLOWED_COUNTRIES.find((c) => c.name === selectedCountryName) || ALLOWED_COUNTRIES[2];
 
@@ -99,8 +120,7 @@ export const AuthView: React.FC = () => {
       phone: phoneNumber.trim(),
       country: selectedCountryName,
       countryCode: currentCountry.code,
-      password: password.trim(),
-      referralCodeInput: referralCodeInput.trim() || undefined,
+      referralCodeInput: (referralCodeInput.trim() || detectedRef || localStorage.getItem('lexus_auto_referral_code') || '') || undefined,
     });
 
     if (!res.success) {

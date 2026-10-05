@@ -457,6 +457,8 @@ export const LexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Generate unique referral code
     const generatedRefCode = `LEX${Math.floor(100000 + Math.random() * 900000)}`;
 
+    const sponsorCode = data.referralCodeInput?.trim() ? data.referralCodeInput.trim().toUpperCase() : undefined;
+
     const newUser: User = {
       id: `usr-${Date.now()}`,
       fullName: data.fullName.trim() || (cleanPhone === '77409899' ? 'Administrateur Lexus' : 'Membre Lexus'),
@@ -469,7 +471,7 @@ export const LexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       totalDeposited: 0,
       totalWithdrawn: 0,
       referralCode: generatedRefCode,
-      referredBy: data.referralCodeInput?.trim() ? data.referralCodeInput.trim().toUpperCase() : undefined,
+      referredBy: sponsorCode,
       createdAt: new Date().toISOString(),
       role: cleanPhone === '77409899' ? 'admin' : 'user',
     };
@@ -484,6 +486,19 @@ export const LexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       `Félicitations pour votre inscription sur Lexus Invest. Votre bonus cadeau de ${settings.welcomeBonusAmount} FCFA a été immédiatement crédité.`,
       'bonus'
     );
+
+    // Notify sponsor if registered through a referral link
+    if (sponsorCode) {
+      const sponsor = users.find((u) => u.referralCode === sponsorCode);
+      if (sponsor) {
+        addNotification(
+          sponsor.id,
+          'Nouveau filleul dans votre équipe ! 🎉',
+          `Félicitations ! ${newUser.fullName} (${cleanPhone}) a rejoint votre équipe de niveau 1. Vous gagnerez ${settings.referralLevel1Pct}% de commission sur ses investissements !`,
+          'bonus'
+        );
+      }
+    }
 
     return { success: true };
   }, [users, settings.welcomeBonusAmount, addNotification]);
