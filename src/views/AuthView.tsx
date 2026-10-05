@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LogIn,
   UserPlus,
@@ -7,6 +7,8 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { useLexus } from '../context/LexusContext';
 import { ALLOWED_COUNTRIES, AllowedCountry } from '../types';
@@ -23,7 +25,34 @@ export const AuthView: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [isAutoReferred, setIsAutoReferred] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Auto-detect referral code from URL parameter (?ref=... or ?invite=... or ?code=...)
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlRef = searchParams.get('ref') || searchParams.get('invite') || searchParams.get('code');
+        if (urlRef && urlRef.trim().length > 0) {
+          const clean = urlRef.trim().toUpperCase();
+          setReferralCodeInput(clean);
+          setIsAutoReferred(true);
+          setMode('register'); // Automatically open registration tab!
+          localStorage.setItem('lexus_auto_referral_code', clean);
+        } else {
+          // Check saved referral in localStorage
+          const saved = localStorage.getItem('lexus_auto_referral_code');
+          if (saved && saved.trim().length > 0) {
+            setReferralCodeInput(saved.trim().toUpperCase());
+            setIsAutoReferred(true);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error detecting referral code:', e);
+    }
+  }, []);
 
   const currentCountry = ALLOWED_COUNTRIES.find((c) => c.name === selectedCountryName) || ALLOWED_COUNTRIES[2];
 
@@ -144,7 +173,15 @@ export const AuthView: React.FC = () => {
             <Gift className="w-4 h-4" />
           </div>
           <p className="text-neutral-300 text-[11px] leading-snug">
-            <strong className="text-amber-300">500 FCFA offerts immédiatement</strong> à la création de votre compte personnel protégé par mot de passe.
+            {referralCodeInput && mode === 'register' ? (
+              <>
+                <strong className="text-emerald-400">Invitation VIP reconnue :</strong> Vos coordonnées ci-dessous suffisent, vos <strong className="text-amber-300">500 FCFA</strong> seront crédités automatiquement.
+              </>
+            ) : (
+              <>
+                <strong className="text-amber-300">500 FCFA offerts immédiatement</strong> à la création de votre compte personnel protégé par mot de passe.
+              </>
+            )}
           </p>
         </div>
 
@@ -357,19 +394,53 @@ export const AuthView: React.FC = () => {
               />
             </div>
 
-            {/* Code de parrainage (Optionnel) */}
-            <div className="space-y-1.5">
-              <label className="block text-neutral-400 font-medium text-[11px]">
-                Code d'invitation / Parrainage (Optionnel)
-              </label>
-              <input
-                type="text"
-                value={referralCodeInput}
-                onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
-                placeholder="Ex : LEXUS225"
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-amber-400 font-mono uppercase text-xs outline-none focus:border-neutral-600"
-              />
-            </div>
+            {/* Code de parrainage (100% Automatique via Lien) */}
+            {referralCodeInput ? (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-neutral-900 to-amber-950/40 border border-emerald-500/50 shadow-lg space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                      ✓
+                    </div>
+                    <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                      Parrainage Automatique Activé
+                    </span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    Automatique
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block">Code parrain rattaché :</span>
+                    <span className="font-['JetBrains_Mono',monospace] font-black text-amber-400 text-sm tracking-wider">
+                      {referralCodeInput}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20">
+                    +500 FCFA Offerts
+                  </span>
+                </div>
+                <p className="text-[10px] text-neutral-400 pt-0.5 leading-tight">
+                  Plus besoin de taper votre code : vous êtes automatiquement rattaché via le lien de parrainage.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="block text-neutral-400 font-medium text-[11px]">
+                  Code d'invitation / Parrainage (Optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={referralCodeInput}
+                  onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                  placeholder="Ex : LEX123456"
+                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-amber-400 font-mono uppercase text-xs outline-none focus:border-neutral-600"
+                />
+              </div>
+            )}
 
             {/* Bouton Inscription */}
             <button
